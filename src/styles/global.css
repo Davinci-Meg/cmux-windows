@@ -47,6 +47,20 @@ body::-webkit-scrollbar {
   overflow: hidden;
 }
 
+/* Terminal DOM移動方式: 全Terminalのフラットコンテナ */
+.terminals-container {
+  display: contents;
+}
+
+.terminal-wrapper {
+  flex: 1;
+  display: none; /* useLayoutEffectが表示制御する。デフォルト非表示 */
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
 /* Sidebar — cmux-style wide card layout */
 .sidebar {
   width: 260px;
@@ -477,4 +491,125 @@ body::-webkit-scrollbar {
 .settings-btn.save:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Split layout */
+.split-container {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.split-container.horizontal {
+  flex-direction: row;
+}
+
+.split-container.vertical {
+  flex-direction: column;
+}
+
+.split-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: border-color 0.12s ease;
+}
+
+.split-pane.active {
+  border-color: rgba(137, 180, 250, 0.4);
+}
+
+.resize-handle {
+  flex-shrink: 0;
+  background: rgba(205, 214, 244, 0.06);
+  transition: background 0.12s ease;
+}
+
+.resize-handle:hover {
+  background: rgba(137, 180, 250, 0.3);
+}
+
+.resize-handle.horizontal {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.resize-handle.vertical {
+  height: 4px;
+  cursor: row-resize;
+}
+
+/* ドラッグ中はxtermのpointer-eventsを無効化 */
+.resizing .xterm {
+  pointer-events: none;
+}
+
+.resizing {
+  cursor: col-resize;
+}
+
+.resizing .resize-handle.vertical,
+.resizing.resizing-vertical {
+  cursor: row-resize;
+}
+
+/* Tab context menu */
+.tab-context-menu {
+  position: fixed;
+  z-index: 200;
+  min-width: 180px;
+  background: #1e1e2e;
+  border: 1px solid rgba(205, 214, 244, 0.15);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #cdd6f4;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease;
+}
+
+.context-menu-item:hover {
+  background: rgba(137, 180, 250, 0.12);
+}
+
+.context-menu-item.danger {
+  color: #f38ba8;
+}
+
+.context-menu-item.danger:hover {
+  background: rgba(243, 139, 168, 0.12);
+}
+
+.context-menu-separator {
+  height: 1px;
+  margin: 4px 8px;
+  background: rgba(205, 214, 244, 0.08);
+}
+
+/* Sidebar: 表示中タブのインジケーター */
+.tab-displayed-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #89b4fa;
+  flex-shrink: 0;
+  opacity: 0.7;
 }

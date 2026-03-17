@@ -1,11 +1,27 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useLayoutEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Terminal from "./components/Terminal";
 import TextBoxInput from "./components/TextBoxInput";
-import Sidebar, { type Tab, type TabStatus } from "./components/Sidebar";
+import SplitFrame from "./components/SplitFrame";
+import Sidebar, { type Tab, type TabStatus, generateTabUid } from "./components/Sidebar";
 import SettingsModal from "./components/SettingsModal";
 import UpdateNotice from "./components/UpdateNotice";
 import { matchShortcut } from "./shortcuts";
+import type { LayoutNode } from "./types/split";
+import {
+  findPaneById,
+  findPaneByTabId,
+  splitPane,
+  closePane,
+  replacePaneTab,
+  getAllPaneIds,
+  getAllTabIds,
+  getAllPanesFlat,
+  getNextPaneId,
+  getPrevPaneId,
+  generatePaneId,
+  removePanesWithTabId,
+} from "./utils/layout";
 import "./styles/global.css";
 
 interface AppearanceSettings {
@@ -28,16 +44,16 @@ function isAgentTitle(title: string): boolean {
   return AGENT_PATTERNS.some((p) => p.test(title));
 }
 
-let tabCounter = 0;
-
 function createTab(): Tab {
-  tabCounter += 1;
   return {
+    uid: generateTabUid(),
     id: "",
-    name: `${tabCounter}`,
+    name: "",
     status: "idle",
   };
 }
+
+const initialPaneId = generatePaneId();
 
 export default function App() {
   const [tabs, setTabs] = useState<Tab[]>(() => [createTab()]);
@@ -49,6 +65,37 @@ export default function App() {
     font_family: "'Cascadia Code', 'Cascadia Mono', Consolas, monospace",
     font_size: 14,
   });
+
+  // Split layout state
+  const [layout, setLayout] = useState<LayoutNode>({
+    type: "pane",
+    id: initialPaneId,
+    tabId: "",
+  });
+  const [activePaneId, setActivePaneId] = useState<string>(initialPaneId);
+
+  const isSplit = getAllPaneIds(layout).length > 1;
+
+  // DOM移動用のref
+  const terminalsContainerRef = useRef<HTMLDivElement>(null);
+  const terminalRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const paneRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const registerTerminalRef = useCallback((tabId: string, el: HTMLDivElement | null) => {
+    if (el) {
+      terminalRefs.current.set(tabId, el);
+    } else {
+      terminalRefs.current.delete(tabId);
+    }
+  }, []);
+
+  const paneRefCallback = useCallback((paneId: string, el: HTMLDivElement | null) => {
+    if (el) {
+      paneRefs.current.set(paneId, el);
+    } else {
+      paneRefs.current.delete(paneId);
+    }
+  }, []);
 
   // 通知権限をリクエスト
   useEffect(() => {
@@ -75,11 +122,19 @@ export default function App() {
 
   const activeTab = tabs[activeIndex] || tabs[0];
 
+  // --- tabId基準の統一コールバック ---
+
   const handleTabIdCreated = useCallback(
     (index: number, id: string) => {
       setTabs((prev) =>
         prev.map((tab, i) => (i === index ? { ...tab, id } : tab))
       );
+      // レイアウトのペインにもIDを反映
+      setLayout((prev) => {
+        const pane = findPaneByTabId(prev, "");
+        if (pane) return replacePaneTab(prev, pane.id, id);
+        return prev;
+      });
     },
     []
   );
@@ -111,24 +166,41 @@ export default function App() {
     []
   );
 
+  // --- 共通ハンドラー ---
+
   const handleTabSelect = useCallback(
     (id: string) => {
       const index = tabs.findIndex((t) => t.id === id);
       if (index >= 0) setActiveIndex(index);
+
+      if (isSplit) {
+        const pane = findPaneByTabId(layout, id);
+        if (pane) {
+          setActivePaneId(pane.id);
+        }
+      }
     },
-    [tabs]
+    [tabs, layout, isSplit]
   );
 
   const handleNewTab = useCallback(() => {
     const newTab = createTab();
-    setTabs((prev) => [...prev, newTab]);
-    setActiveIndex(tabs.length);
-  }, [tabs.length]);
+    setTabs((prev) => {
+      setActiveIndex(prev.length);
+      return [...prev, newTab];
+    });
+  }, []);
 
   const handleCloseTab = useCallback(
     (id: string) => {
-      // PTYセッションを解放
       invoke("close_pty", { tabId: id }).catch(() => {});
+
+      if (isSplit) {
+        setLayout((prev) => {
+          const result = removePanesWithTabId(prev, id);
+          return result ?? prev;
+        });
+      }
 
       setTabs((prev) => {
         const next = prev.filter((t) => t.id !== id);
@@ -143,7 +215,7 @@ export default function App() {
         return prev;
       });
     },
-    [tabs]
+    [tabs, isSplit]
   );
 
   const handleReorderTabs = useCallback(
@@ -154,7 +226,6 @@ export default function App() {
         next.splice(toIndex, 0, moved);
         return next;
       });
-      // activeIndexも追従
       setActiveIndex((prev) => {
         if (prev === fromIndex) return toIndex;
         if (fromIndex < prev && toIndex >= prev) return prev - 1;
@@ -169,10 +240,150 @@ export default function App() {
     setAppearance({ font_family: fontFamily, font_size: fontSize });
   }, []);
 
+  // --- 分割操作（タブ作成なし） ---
+
+  const handleSplitHorizontal = useCallback(() => {
+    // タブが2つ以上あり、レイアウトにないタブがあれば次のタブを使って分割
+    const tabIdsInLayout = getAllTabIds(layout);
+    const availableTab = tabs.find((t) => t.id && !tabIdsInLayout.includes(t.id));
+
+    if (!availableTab) return; // 使えるタブがなければ何もしない
+
+    if (!isSplit && activeTab?.id) {
+      setLayout((prev) => {
+        const updated = replacePaneTab(prev, activePaneId, activeTab.id);
+        return splitPane(updated, activePaneId, "horizontal", availableTab.id);
+      });
+    } else if (isSplit) {
+      setLayout((prev) => splitPane(prev, activePaneId, "horizontal", availableTab.id));
+    }
+  }, [activePaneId, isSplit, activeTab, layout, tabs]);
+
+  const handleSplitVertical = useCallback(() => {
+    const tabIdsInLayout = getAllTabIds(layout);
+    const availableTab = tabs.find((t) => t.id && !tabIdsInLayout.includes(t.id));
+
+    if (!availableTab) return;
+
+    if (!isSplit && activeTab?.id) {
+      setLayout((prev) => {
+        const updated = replacePaneTab(prev, activePaneId, activeTab.id);
+        return splitPane(updated, activePaneId, "vertical", availableTab.id);
+      });
+    } else if (isSplit) {
+      setLayout((prev) => splitPane(prev, activePaneId, "vertical", availableTab.id));
+    }
+  }, [activePaneId, isSplit, activeTab, layout, tabs]);
+
+  // 右クリックから既存タブを分割表示
+  const handleSplitTab = useCallback(
+    (tabId: string, direction: "horizontal" | "vertical") => {
+      // 自分自身とは分割できない
+      if (tabId === activeTab?.id) return;
+
+      if (!isSplit && activeTab?.id) {
+        // 単一ペイン → 分割: アクティブタブを左/上、指定タブを右/下
+        setLayout((prev) => {
+          const updated = replacePaneTab(prev, activePaneId, activeTab.id);
+          return splitPane(updated, activePaneId, direction, tabId);
+        });
+      } else {
+        // 既に分割中: アクティブペインを分割して指定タブを配置
+        setLayout((prev) => splitPane(prev, activePaneId, direction, tabId));
+      }
+    },
+    [activePaneId, isSplit, activeTab]
+  );
+
+  // ペインを閉じる（タブは閉じない、分割から外すだけ）
+  const handleClosePane = useCallback(() => {
+    const allPaneIds = getAllPaneIds(layout);
+    if (allPaneIds.length <= 1) return;
+
+    const nextPaneId = getNextPaneId(layout, activePaneId);
+    const newLayout = closePane(layout, activePaneId);
+    if (newLayout) {
+      setLayout(newLayout);
+      if (nextPaneId && nextPaneId !== activePaneId) {
+        setActivePaneId(nextPaneId);
+        const nextPane = findPaneById(newLayout, nextPaneId);
+        if (nextPane) {
+          const idx = tabs.findIndex((t) => t.id === nextPane.tabId);
+          if (idx >= 0) setActiveIndex(idx);
+        }
+      }
+    }
+  }, [layout, activePaneId, tabs]);
+
+  const handlePaneClick = useCallback(
+    (paneId: string) => {
+      if (paneId === activePaneId) return;
+      setActivePaneId(paneId);
+      const pane = findPaneById(layout, paneId);
+      if (pane && pane.tabId) {
+        const idx = tabs.findIndex((t) => t.id === pane.tabId);
+        if (idx >= 0) setActiveIndex(idx);
+      }
+    },
+    [layout, tabs, activePaneId]
+  );
+
+  const displayedTabIds = getAllTabIds(layout);
+
+  // --- DOM直接操作によるTerminal移動 ---
+  useLayoutEffect(() => {
+    if (!terminalsContainerRef.current) return;
+    const container = terminalsContainerRef.current;
+
+    if (isSplit) {
+      const panes = getAllPanesFlat(layout);
+      const displayedIds = new Set(panes.map((p) => p.tabId));
+
+      for (const pane of panes) {
+        const termEl = terminalRefs.current.get(pane.tabId);
+        const paneEl = paneRefs.current.get(pane.id);
+        if (termEl && paneEl && termEl.parentElement !== paneEl) {
+          paneEl.appendChild(termEl);
+        }
+        if (termEl) termEl.style.display = "flex";
+      }
+
+      // レイアウト外のTerminalは非表示にして元の場所に戻す
+      for (const [tabId, termEl] of terminalRefs.current) {
+        if (!displayedIds.has(tabId)) {
+          termEl.style.display = "none";
+          if (termEl.parentElement !== container) {
+            container.appendChild(termEl);
+          }
+        }
+      }
+
+      // id未取得のtab(Terminal初期化中)も非表示にする
+      const wrappers = container.querySelectorAll<HTMLDivElement>(".terminal-wrapper");
+      wrappers.forEach((w) => { w.style.display = "none"; });
+    } else {
+      // フラットモード: 全Terminalを元のcontainerに戻す
+      for (const [tabId, termEl] of terminalRefs.current) {
+        if (termEl.parentElement !== container) {
+          container.appendChild(termEl);
+        }
+        termEl.style.display = tabId === activeTab?.id ? "flex" : "none";
+      }
+
+      // id未取得のアクティブタブも表示する
+      const activeTabObj = tabs[activeIndex];
+      if (activeTabObj && !activeTabObj.id) {
+        const wrapper = container.querySelector<HTMLDivElement>(
+          `.terminal-wrapper[data-tab-uid="${activeTabObj.uid}"]`
+        );
+        if (wrapper) wrapper.style.display = "flex";
+      }
+    }
+  }, [layout, isSplit, activeTab?.id, activeIndex, tabs]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 設定モーダルが開いている間はショートカット無効化（Escapeは別途ハンドル）
       if (settingsOpen) return;
 
       const action = matchShortcut(e);
@@ -186,11 +397,15 @@ export default function App() {
         case "new-tab":
           handleNewTab();
           break;
-        case "close-tab":
-          if (activeTab?.id && tabs.length > 1) {
+        case "close-tab": {
+          const paneCount = getAllPaneIds(layout).length;
+          if (paneCount > 1) {
+            handleClosePane();
+          } else if (activeTab?.id && tabs.length > 1) {
             handleCloseTab(activeTab.id);
           }
           break;
+        }
         case "next-tab":
           setActiveIndex((prev) => (prev + 1) % tabs.length);
           break;
@@ -200,41 +415,104 @@ export default function App() {
         case "open-settings":
           setSettingsOpen(true);
           break;
+        case "split-horizontal":
+          handleSplitHorizontal();
+          break;
+        case "split-vertical":
+          handleSplitVertical();
+          break;
+        case "next-pane": {
+          const nextId = getNextPaneId(layout, activePaneId);
+          if (nextId) {
+            setActivePaneId(nextId);
+            const pane = findPaneById(layout, nextId);
+            if (pane && pane.tabId) {
+              const idx = tabs.findIndex((t) => t.id === pane.tabId);
+              if (idx >= 0) setActiveIndex(idx);
+            }
+          }
+          break;
+        }
+        case "prev-pane": {
+          const prevId = getPrevPaneId(layout, activePaneId);
+          if (prevId) {
+            setActivePaneId(prevId);
+            const pane = findPaneById(layout, prevId);
+            if (pane && pane.tabId) {
+              const idx = tabs.findIndex((t) => t.id === pane.tabId);
+              if (idx >= 0) setActiveIndex(idx);
+            }
+          }
+          break;
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [settingsOpen, tabs, activeTab, handleNewTab, handleCloseTab]);
+  }, [settingsOpen, tabs, activeTab, handleNewTab, handleCloseTab, handleSplitHorizontal, handleSplitVertical, handleClosePane, layout, activePaneId]);
+
+  // 分割モード時のアクティブペインのtabIdを取得
+  const activePaneTabId = isSplit
+    ? findPaneById(layout, activePaneId)?.tabId || null
+    : null;
 
   return (
     <div className="app">
       <Sidebar
         tabs={tabs.filter((t) => t.id !== "")}
         activeTabId={activeTab?.id || null}
+        displayedTabIds={isSplit ? displayedTabIds : []}
         onTabSelect={handleTabSelect}
         onNewTab={handleNewTab}
         onCloseTab={handleCloseTab}
         onReorderTabs={handleReorderTabs}
         onOpenSettings={() => setSettingsOpen(true)}
+        onSplitTab={handleSplitTab}
       />
       <div className="main-area">
-        {tabs.map((tab, index) => (
-          <div
-            key={index}
-            className="terminal-container"
-            style={{ display: index === activeIndex ? "flex" : "none" }}
-          >
-            <Terminal
-              tabId={tab.id || null}
-              onTabIdCreated={(id) => handleTabIdCreated(index, id)}
-              onTitleChange={(title) => handleTitleChange(index, title)}
-              isActive={index === activeIndex}
-              fontFamily={appearance.font_family}
-              fontSize={appearance.font_size}
-            />
-            {textBoxVisible && <TextBoxInput tabId={tab.id || null} />}
-          </div>
-        ))}
+        {/* 分割フレーム（空のpane枠のみ） */}
+        {isSplit && (
+          <SplitFrame
+            layout={layout}
+            activePaneId={activePaneId}
+            onLayoutChange={setLayout}
+            onPaneClick={handlePaneClick}
+            paneRefCallback={paneRefCallback}
+          />
+        )}
+
+        {/* 全Terminal（常にマウント、display制御はuseLayoutEffectで行う） */}
+        <div ref={terminalsContainerRef} className="terminals-container">
+          {tabs.map((tab, index) => (
+            <div
+              key={tab.uid}
+              ref={(el) => {
+                if (tab.id) registerTerminalRef(tab.id, el);
+              }}
+              className="terminal-wrapper"
+              data-tab-id={tab.id}
+              data-tab-uid={tab.uid}
+            >
+              <Terminal
+                tabId={tab.id || null}
+                onTabIdCreated={(id) => handleTabIdCreated(index, id)}
+                onTitleChange={(title) => handleTitleChange(index, title)}
+                isActive={isSplit
+                  ? tab.id === activePaneTabId
+                  : index === activeIndex}
+                fontFamily={appearance.font_family}
+                fontSize={appearance.font_size}
+              />
+              {textBoxVisible && (
+                isSplit
+                  ? tab.id === activePaneTabId
+                  : index === activeIndex
+              ) && (
+                <TextBoxInput tabId={tab.id || null} />
+              )}
+            </div>
+          ))}
+        </div>
       </div>
       {settingsOpen && (
         <SettingsModal

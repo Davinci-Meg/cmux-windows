@@ -11,11 +11,12 @@ interface TerminalProps {
   onTabIdCreated: (id: string) => void;
   onTitleChange?: (title: string) => void;
   isActive: boolean;
+  isVisible?: boolean;
   fontFamily?: string;
   fontSize?: number;
 }
 
-export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActive, fontFamily, fontSize }: TerminalProps) {
+export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActive, isVisible = true, fontFamily, fontSize }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -166,7 +167,10 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActiv
 
   useEffect(() => {
     if (isActive && fitAddonRef.current) {
-      setTimeout(() => fitAddonRef.current?.fit(), 0);
+      setTimeout(() => {
+        fitAddonRef.current?.fit();
+        xtermRef.current?.focus();
+      }, 0);
     }
   }, [isActive]);
 
@@ -214,7 +218,7 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActiv
       style={{
         flex: 1,
         overflow: "hidden",
-        display: isActive ? "flex" : "none",
+        display: isVisible ? "flex" : "none",
         flexDirection: "column",
         position: "relative",
       }}

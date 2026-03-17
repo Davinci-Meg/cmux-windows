@@ -1,8 +1,15 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 type TabStatus = "idle" | "agent-running" | "agent-done";
 
+let tabUidCounter = 0;
+export function generateTabUid(): string {
+  tabUidCounter += 1;
+  return `tab-uid-${tabUidCounter}`;
+}
+
 interface Tab {
+  uid: string;
   id: string;
   name: string;
   status: TabStatus;
@@ -11,25 +18,37 @@ interface Tab {
 interface SidebarProps {
   tabs: Tab[];
   activeTabId: string | null;
+  displayedTabIds: string[];
   onTabSelect: (id: string) => void;
   onNewTab: () => void;
   onCloseTab: (id: string) => void;
   onReorderTabs: (fromIndex: number, toIndex: number) => void;
   onOpenSettings: () => void;
+  onSplitTab: (tabId: string, direction: "horizontal" | "vertical") => void;
+}
+
+interface ContextMenuState {
+  tabId: string;
+  x: number;
+  y: number;
 }
 
 export default function Sidebar({
   tabs,
   activeTabId,
+  displayedTabIds,
   onTabSelect,
   onNewTab,
   onCloseTab,
   onReorderTabs,
   onOpenSettings,
+  onSplitTab,
 }: SidebarProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const dragNodeRef = useRef<HTMLDivElement | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement | null>(null);
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, index: number) => {
@@ -77,6 +96,26 @@ export default function Sidebar({
     dragNodeRef.current = null;
   }, []);
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, tabId: string) => {
+      e.preventDefault();
+      setContextMenu({ tabId, x: e.clientX, y: e.clientY });
+    },
+    []
+  );
+
+  // コンテキストメニュー外クリックで閉じる
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    window.addEventListener("mousedown", handleClick);
+    return () => window.removeEventListener("mousedown", handleClick);
+  }, [contextMenu]);
+
   return (
     <div className="sidebar">
       {/* Top toolbar */}
@@ -101,6 +140,7 @@ export default function Sidebar({
             key={tab.id}
             className={`sidebar-tab${tab.id === activeTabId ? " active" : ""} ${tab.status}${dropIndex === index && dragIndex !== null && dragIndex !== index ? " drop-target" : ""}`}
             onClick={() => onTabSelect(tab.id)}
+            onContextMenu={(e) => handleContextMenu(e, tab.id)}
             draggable
             onDragStart={(e) => handleDragStart(e, index)}
             onDragOver={(e) => handleDragOver(e, index)}
@@ -124,6 +164,9 @@ export default function Sidebar({
             </div>
             <div className="tab-meta">
               <span className="tab-shell">shell</span>
+              {displayedTabIds.includes(tab.id) && tab.id !== activeTabId && (
+                <span className="tab-displayed-dot" title="Displayed in split view" />
+              )}
               {tab.status !== "idle" && (
                 <span className={`tab-status-dot ${tab.status}`} />
               )}
@@ -132,6 +175,54 @@ export default function Sidebar({
           </div>
         ))}
       </div>
+
+      {/* Context menu */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="tab-context-menu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <button
+            className="context-menu-item"
+            onClick={() => {
+              onSplitTab(contextMenu.tabId, "horizontal");
+              setContextMenu(null);
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M2 2h5v12H2V2zm1 1v10h3V3H3zm6-1h5v12H9V2zm1 1v10h3V3h-3z"/>
+            </svg>
+            右に分割表示
+          </button>
+          <button
+            className="context-menu-item"
+            onClick={() => {
+              onSplitTab(contextMenu.tabId, "vertical");
+              setContextMenu(null);
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M2 2h12v5H2V2zm1 1v3h10V3H3zM2 9h12v5H2V9zm1 1v3h10v-3H3z"/>
+            </svg>
+            下に分割表示
+          </button>
+          {tabs.length > 1 && (
+            <>
+              <div className="context-menu-separator" />
+              <button
+                className="context-menu-item danger"
+                onClick={() => {
+                  onCloseTab(contextMenu.tabId);
+                  setContextMenu(null);
+                }}
+              >
+                タブを閉じる
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
