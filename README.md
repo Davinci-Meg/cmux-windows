@@ -76,6 +76,13 @@ npm run tauri build
 | テーマ | Catppuccin Mocha |
 | ビルドツール | Vite |
 
+## ☕ サポート
+
+継続的な開発のために、サポートいただけますと幸いです！
+Your support helps keep this project going!
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/megumu)
+
 ## 📄 ライセンス
 
 [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE)
