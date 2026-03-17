@@ -204,6 +204,58 @@ body::-webkit-scrollbar {
   color: #585b70;
 }
 
+/* Agent status — running (yellow/peach pulse) */
+.sidebar-tab.agent-running {
+  border-color: rgba(250, 179, 135, 0.4);
+  background: rgba(250, 179, 135, 0.06);
+}
+
+.sidebar-tab.agent-running.active {
+  border-color: rgba(250, 179, 135, 0.5);
+  background: rgba(250, 179, 135, 0.1);
+}
+
+.sidebar-tab.agent-running .tab-title {
+  color: #fab387;
+}
+
+/* Agent status — done (green) */
+.sidebar-tab.agent-done {
+  border-color: rgba(166, 227, 161, 0.4);
+  background: rgba(166, 227, 161, 0.06);
+}
+
+.sidebar-tab.agent-done.active {
+  border-color: rgba(166, 227, 161, 0.5);
+  background: rgba(166, 227, 161, 0.1);
+}
+
+.sidebar-tab.agent-done .tab-title {
+  color: #a6e3a1;
+}
+
+/* Status indicator dot */
+.tab-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tab-status-dot.agent-running {
+  background: #fab387;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.tab-status-dot.agent-done {
+  background: #a6e3a1;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
 /* Tab drag & drop */
 .sidebar-tab.dragging {
   opacity: 0.4;

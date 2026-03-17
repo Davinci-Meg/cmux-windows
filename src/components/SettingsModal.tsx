@@ -8,14 +8,16 @@ interface Settings {
   text_box: { enabled: boolean; enter_to_send: boolean; escape_behavior: string };
   sidebar: { visible: boolean; width: number };
   window: { width: number; height: number; start_maximized: boolean };
+  notifications: { agent_done: boolean };
 }
 
 interface SettingsModalProps {
   onClose: () => void;
   onAppearanceChange: (fontFamily: string, fontSize: number) => void;
+  onNotificationChange: (agentDone: boolean) => void;
 }
 
-export default function SettingsModal({ onClose, onAppearanceChange }: SettingsModalProps) {
+export default function SettingsModal({ onClose, onAppearanceChange, onNotificationChange }: SettingsModalProps) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -31,6 +33,7 @@ export default function SettingsModal({ onClose, onAppearanceChange }: SettingsM
     try {
       await invoke("update_settings", { settings });
       onAppearanceChange(settings.appearance.font_family, settings.appearance.font_size);
+      onNotificationChange(settings.notifications.agent_done);
       onClose();
     } catch {
       // save error — keep modal open
@@ -152,6 +155,24 @@ export default function SettingsModal({ onClose, onAppearanceChange }: SettingsM
                 }
               />
               <span>Enterで送信</span>
+            </label>
+          </section>
+
+          {/* Notifications */}
+          <section className="settings-section">
+            <h3>通知</h3>
+            <label className="settings-field checkbox">
+              <input
+                type="checkbox"
+                checked={settings.notifications.agent_done}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    notifications: { ...settings.notifications, agent_done: e.target.checked },
+                  })
+                }
+              />
+              <span>Agent完了時に通知する</span>
             </label>
           </section>
 

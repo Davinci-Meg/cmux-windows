@@ -1,8 +1,11 @@
 import { useState, useCallback, useRef } from "react";
 
+type TabStatus = "idle" | "agent-running" | "agent-done";
+
 interface Tab {
   id: string;
   name: string;
+  status: TabStatus;
 }
 
 interface SidebarProps {
@@ -96,7 +99,7 @@ export default function Sidebar({
         {tabs.map((tab, index) => (
           <div
             key={tab.id}
-            className={`sidebar-tab${tab.id === activeTabId ? " active" : ""}${dropIndex === index && dragIndex !== null && dragIndex !== index ? " drop-target" : ""}`}
+            className={`sidebar-tab${tab.id === activeTabId ? " active" : ""} ${tab.status}${dropIndex === index && dragIndex !== null && dragIndex !== index ? " drop-target" : ""}`}
             onClick={() => onTabSelect(tab.id)}
             draggable
             onDragStart={(e) => handleDragStart(e, index)}
@@ -121,6 +124,9 @@ export default function Sidebar({
             </div>
             <div className="tab-meta">
               <span className="tab-shell">shell</span>
+              {tab.status !== "idle" && (
+                <span className={`tab-status-dot ${tab.status}`} />
+              )}
               <span className="tab-id">{tab.id.slice(0, 8)}</span>
             </div>
           </div>
@@ -130,4 +136,4 @@ export default function Sidebar({
   );
 }
 
-export type { Tab };
+export type { Tab, TabStatus };

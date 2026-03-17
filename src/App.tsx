@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Terminal from "./components/Terminal";
 import TextBoxInput from "./components/TextBoxInput";
-import Sidebar, { type Tab } from "./components/Sidebar";
+import Sidebar, { type Tab, type TabStatus } from "./components/Sidebar";
 import SettingsModal from "./components/SettingsModal";
 import { matchShortcut } from "./shortcuts";
 import "./styles/global.css";
@@ -12,13 +12,29 @@ interface AppearanceSettings {
   font_size: number;
 }
 
+// AI Agentの検出パターン
+const AGENT_PATTERNS = [
+  /\bclaude\b/i,
+  /\baider\b/i,
+  /\bcopilot\b/i,
+  /\bcursor\b/i,
+  /\bgithub.copilot\b/i,
+  /\bgemini\b/i,
+  /\bcody\b/i,
+];
+
+function isAgentTitle(title: string): boolean {
+  return AGENT_PATTERNS.some((p) => p.test(title));
+}
+
 let tabCounter = 0;
 
 function createTab(): Tab {
   tabCounter += 1;
   return {
-    id: "", // Will be assigned when PTY is created
+    id: "",
     name: `${tabCounter}`,
+    status: "idle",
   };
 }
 
@@ -27,20 +43,31 @@ export default function App() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [textBoxVisible, setTextBoxVisible] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [notifyAgentDone, setNotifyAgentDone] = useState(true);
   const [appearance, setAppearance] = useState<AppearanceSettings>({
     font_family: "'Cascadia Code', 'Cascadia Mono', Consolas, monospace",
     font_size: 14,
   });
 
+  // 通知権限をリクエスト
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
   // Load settings on mount
   useEffect(() => {
-    invoke<{ appearance: AppearanceSettings }>("get_settings")
+    invoke<{ appearance: AppearanceSettings; notifications: { agent_done: boolean } }>("get_settings")
       .then((settings) => {
         const a = settings.appearance;
         setAppearance({
           font_family: a.font_family || "'Cascadia Code', 'Cascadia Mono', Consolas, monospace",
           font_size: a.font_size || 14,
         });
+        if (settings.notifications != null) {
+          setNotifyAgentDone(settings.notifications.agent_done);
+        }
       })
       .catch(() => {});
   }, []);
@@ -56,10 +83,28 @@ export default function App() {
     []
   );
 
+  const notifyRef = useRef(notifyAgentDone);
+  useEffect(() => { notifyRef.current = notifyAgentDone; }, [notifyAgentDone]);
+
   const handleTitleChange = useCallback(
     (index: number, title: string) => {
       setTabs((prev) =>
-        prev.map((tab, i) => (i === index ? { ...tab, name: title } : tab))
+        prev.map((tab, i) => {
+          if (i !== index) return tab;
+          const agentDetected = isAgentTitle(title);
+          let status: TabStatus = tab.status;
+          if (agentDetected) {
+            status = "agent-running";
+          } else if (tab.status === "agent-running") {
+            status = "agent-done";
+            if (notifyRef.current && Notification.permission === "granted") {
+              new Notification("Agent completed", {
+                body: `Tab "${tab.name}" の処理が完了しました`,
+              });
+            }
+          }
+          return { ...tab, name: title, status };
+        })
       );
     },
     []
@@ -194,6 +239,7 @@ export default function App() {
         <SettingsModal
           onClose={() => setSettingsOpen(false)}
           onAppearanceChange={handleAppearanceChange}
+          onNotificationChange={setNotifyAgentDone}
         />
       )}
     </div>

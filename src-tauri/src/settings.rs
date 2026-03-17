@@ -11,6 +11,7 @@ pub struct Settings {
     pub text_box: TextBoxSettings,
     pub sidebar: SidebarSettings,
     pub window: WindowSettings,
+    pub notifications: NotificationSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,6 +53,12 @@ pub struct WindowSettings {
     pub start_maximized: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct NotificationSettings {
+    pub agent_done: bool,
+}
+
 // --- Defaults ---
 
 impl Default for Settings {
@@ -62,7 +69,14 @@ impl Default for Settings {
             text_box: TextBoxSettings::default(),
             sidebar: SidebarSettings::default(),
             window: WindowSettings::default(),
+            notifications: NotificationSettings::default(),
         }
+    }
+}
+
+impl Default for NotificationSettings {
+    fn default() -> Self {
+        Self { agent_done: true }
     }
 }
 
