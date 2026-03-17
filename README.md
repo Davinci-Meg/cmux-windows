@@ -8,7 +8,7 @@ English | [日本語](README.ja.md)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![Rust](https://img.shields.io/badge/Rust-1.7x-DEA584?logo=rust&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
+![License](https://img.shields.io/badge/License-AGPL--3.0-green)
 
 ## ✨ Features
 
@@ -86,4 +86,4 @@ npm run tauri build
 
 ## 📄 License
 
-[MIT License](LICENSE)
+[GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE)
