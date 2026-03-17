@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -18,10 +19,13 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActiv
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const webglAddonRef = useRef<WebglAddon | null>(null);
   const initializedRef = useRef(false);
   const tabIdRef = useRef<string | null>(null);
   const unlistenOutputRef = useRef<UnlistenFn | null>(null);
   const unlistenExitRef = useRef<UnlistenFn | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     tabIdRef.current = tabId;
@@ -64,6 +68,22 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActiv
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
     fitAddon.fit();
+
+    // WebGLレンダラーで描画パフォーマンスを向上
+    try {
+      const webglAddon = new WebglAddon();
+      term.loadAddon(webglAddon);
+      webglAddonRef.current = webglAddon;
+      // WebGL コンテキストロスト時にCanvasへフォールバック
+      webglAddon.onContextLoss(() => {
+        webglAddon.dispose();
+        webglAddonRef.current = null;
+      });
+      console.log("WebGL renderer initialized");
+    } catch {
+      console.log("WebGL not available, using Canvas renderer");
+    }
+
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
 
@@ -90,8 +110,9 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActiv
 
         await invoke("start_pty", { tabId: id });
         onTabIdCreated(id);
+        setError(null);
       } catch (err) {
-        term.write(`\r\nError: ${err}\r\n`);
+        setError(String(err));
       }
     })();
 
@@ -127,6 +148,10 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActiv
       resizeObserver.disconnect();
       if (unlistenOutputRef.current) unlistenOutputRef.current();
       if (unlistenExitRef.current) unlistenExitRef.current();
+      if (webglAddonRef.current) {
+        webglAddonRef.current.dispose();
+        webglAddonRef.current = null;
+      }
       // PTYセッションを解放（アプリ終了・タブ削除時）
       const id = tabIdRef.current;
       if (id) {
@@ -145,14 +170,100 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActiv
     }
   }, [isActive]);
 
+  const handleRetry = useCallback(async () => {
+    const term = xtermRef.current;
+    if (!term) return;
+    setRetrying(true);
+    setError(null);
+
+    // 前のリスナーをクリーンアップ
+    if (unlistenOutputRef.current) unlistenOutputRef.current();
+    if (unlistenExitRef.current) unlistenExitRef.current();
+
+    try {
+      const cols = term.cols;
+      const rows = term.rows;
+      const id = await invoke<string>("create_pty", { cols, rows });
+      tabIdRef.current = id;
+
+      unlistenOutputRef.current = await listen<string>(
+        `pty-output-${id}`,
+        (event) => {
+          term.write(event.payload);
+        }
+      );
+      unlistenExitRef.current = await listen(
+        `pty-exit-${id}`,
+        () => {
+          term.write("\r\n[Process exited]\r\n");
+        }
+      );
+
+      await invoke("start_pty", { tabId: id });
+      onTabIdCreated(id);
+      term.clear();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setRetrying(false);
+    }
+  }, [onTabIdCreated]);
+
   return (
     <div
-      ref={containerRef}
       style={{
         flex: 1,
         overflow: "hidden",
-        display: isActive ? "block" : "none",
+        display: isActive ? "flex" : "none",
+        flexDirection: "column",
+        position: "relative",
       }}
-    />
+    >
+      <div
+        ref={containerRef}
+        style={{
+          flex: 1,
+          overflow: "hidden",
+        }}
+      />
+      {error && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: "#1e1e2e",
+            borderTop: "1px solid #f38ba8",
+            padding: "12px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            color: "#cdd6f4",
+            fontSize: "13px",
+          }}
+        >
+          <span style={{ color: "#f38ba8", fontWeight: "bold" }}>PTY Error:</span>
+          <span style={{ flex: 1 }}>{error}</span>
+          <button
+            onClick={handleRetry}
+            disabled={retrying}
+            style={{
+              background: "#89b4fa",
+              color: "#1e1e2e",
+              border: "none",
+              borderRadius: "4px",
+              padding: "4px 12px",
+              cursor: retrying ? "not-allowed" : "pointer",
+              fontWeight: "bold",
+              fontSize: "13px",
+              opacity: retrying ? 0.6 : 1,
+            }}
+          >
+            {retrying ? "接続中..." : "リトライ"}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

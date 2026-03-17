@@ -18,6 +18,17 @@ pub struct SpawnResult {
 impl PtyProcess {
     /// Spawn a new PTY-backed shell process.
     pub fn spawn(shell: &str, cols: u16, rows: u16) -> Result<SpawnResult, String> {
+        // シェルパスの存在確認
+        let shell_path = std::path::Path::new(shell);
+        if !shell.contains('/') && !shell.contains('\\') {
+            // PATHから解決されるコマンド名の場合はそのまま通す
+            log::debug!("[PTY] Using shell from PATH: {shell}");
+        } else if !shell_path.exists() {
+            return Err(format!(
+                "シェルが見つかりません: '{shell}' — 設定でシェルパスを確認してください"
+            ));
+        }
+
         let pty_system = native_pty_system();
 
         let pair = pty_system
@@ -27,12 +38,12 @@ impl PtyProcess {
                 pixel_width: 0,
                 pixel_height: 0,
             })
-            .map_err(|e| format!("Failed to open PTY: {e}"))?;
+            .map_err(|e| format!("PTYの初期化に失敗しました: {e}"))?;
 
         let cmd = CommandBuilder::new(shell);
         pair.slave
             .spawn_command(cmd)
-            .map_err(|e| format!("Failed to spawn command: {e}"))?;
+            .map_err(|e| format!("シェルの起動に失敗しました ('{shell}'): {e}"))?;
 
         // Drop slave to avoid blocking reads
         drop(pair.slave);
@@ -70,7 +81,7 @@ impl PtyProcess {
             loop {
                 match reader.read(&mut buf) {
                     Ok(0) => {
-                        log::debug!("[PTY] EOF for tab {tab_id}");
+                        log::info!("[PTY] EOF for tab {tab_id} — プロセスが終了しました");
                         let _ = app_handle.emit(&format!("pty-exit-{tab_id}"), ());
                         break;
                     }
@@ -79,7 +90,7 @@ impl PtyProcess {
                         let _ = app_handle.emit(&event_name, &text);
                     }
                     Err(e) => {
-                        log::debug!("[PTY] Read error for tab {tab_id}: {e}");
+                        log::error!("[PTY] Read error for tab {tab_id}: {e} (kind: {:?})", e.kind());
                         let _ = app_handle.emit(&format!("pty-exit-{tab_id}"), ());
                         break;
                     }

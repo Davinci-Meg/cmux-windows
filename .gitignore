@@ -26,6 +26,13 @@ dist-ssr
 # Rust build artifacts
 src-tauri/target/
 
+# Signing keys (秘密鍵はリポジトリに含めない)
+src-tauri/keys/
+
+# Temp icon source
+icon-source.svg
+app-icon.png
+
 # Claude Code workspace
 CLAUDE.md
 tasks/

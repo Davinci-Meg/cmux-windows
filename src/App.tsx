@@ -4,6 +4,7 @@ import Terminal from "./components/Terminal";
 import TextBoxInput from "./components/TextBoxInput";
 import Sidebar, { type Tab, type TabStatus } from "./components/Sidebar";
 import SettingsModal from "./components/SettingsModal";
+import UpdateNotice from "./components/UpdateNotice";
 import { matchShortcut } from "./shortcuts";
 import "./styles/global.css";
 
@@ -242,6 +243,7 @@ export default function App() {
           onNotificationChange={setNotifyAgentDone}
         />
       )}
+      <UpdateNotice />
     </div>
   );
 }
