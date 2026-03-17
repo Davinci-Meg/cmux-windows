@@ -16,7 +16,6 @@ English | [日本語](README.ja.md)
 - **AI Agent Detection** — Automatically detects AI agents (Claude, GitHub Copilot, Cursor, etc.) and notifies on completion
 - **WebGL Renderer** — High-performance rendering with automatic Canvas fallback
 - **Tab Management** — Drag & drop tab reordering
-- **Split View** — Freely layout terminals with horizontal and vertical splits
 - **Auto Update** — Automatically detects and installs new versions
 - **Catppuccin Mocha Theme** — An eye-friendly color scheme
 
@@ -61,16 +60,12 @@ npm run tauri build
 |---|---|
 | `Ctrl+Alt+T` | Toggle TextBox input mode |
 | `Ctrl+Shift+T` | New tab |
-| `Ctrl+Shift+W` | Close tab / pane |
+| `Ctrl+Shift+W` | Close tab |
 | `Ctrl+Tab` | Next tab |
 | `Ctrl+Shift+Tab` | Previous tab |
 | `Ctrl+PageDown` | Next tab |
 | `Ctrl+PageUp` | Previous tab |
 | `Ctrl+,` | Open settings |
-| `Ctrl+\` | Horizontal split |
-| `Ctrl+-` | Vertical split |
-| `Ctrl+]` | Next pane |
-| `Ctrl+[` | Previous pane |
 
 ## 🧩 Tech Stack
 
