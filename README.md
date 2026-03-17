@@ -1,88 +1,89 @@
 # 🖥️ cmux-windows
 
-Windows向けターミナルエミュレータ — TextBox入力モード搭載、IME完全対応
+A terminal emulator for Windows — with TextBox input mode and full IME support
+
+English | [日本語](README.ja.md)
 
 ![Tauri v2](https://img.shields.io/badge/Tauri-v2-24C8D8?logo=tauri&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![Rust](https://img.shields.io/badge/Rust-1.7x-DEA584?logo=rust&logoColor=white)
-![License](https://img.shields.io/badge/License-AGPL--3.0-green)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-## ✨ 特徴
+## ✨ Features
 
-- **TextBox入力モード** — IME対応のテキスト入力。`Ctrl+Alt+T` でトグル切替
-- **AI Agent検出** — Claude, GitHub Copilot, Cursor等のAIエージェントを自動検出し、完了時に通知
-- **WebGLレンダラー** — 高速描画。非対応環境ではCanvasに自動フォールバック
-- **タブ管理** — ドラッグ&ドロップによるタブの並び替えに対応
-- **分割ビュー** — 横分割・縦分割でターミナルを自由にレイアウト
-- **自動アップデート** — 新バージョンを自動検出してアップデート
-- **Catppuccin Mocha テーマ** — 目に優しいカラースキーム
+- **TextBox Input Mode** — Text input with full IME support. Toggle with `Ctrl+Alt+T`
+- **AI Agent Detection** — Automatically detects AI agents (Claude, GitHub Copilot, Cursor, etc.) and notifies on completion
+- **WebGL Renderer** — High-performance rendering with automatic Canvas fallback
+- **Tab Management** — Drag & drop tab reordering
+- **Split View** — Freely layout terminals with horizontal and vertical splits
+- **Auto Update** — Automatically detects and installs new versions
+- **Catppuccin Mocha Theme** — An eye-friendly color scheme
 
-## ☕ サポート
+## ☕ Support
 
-継続的な開発のために、サポートいただけますと幸いです！
 Your support helps keep this project going!
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/megumu)
 
-## 📦 インストール
+## 📦 Installation
 
-[GitHub Releases](https://github.com/Davinci-Meg/cmux-windows/releases) から最新のインストーラー（`.msi` / `.exe`）をダウンロードしてください。
+Download the latest installer (`.msi` / `.exe`) from [GitHub Releases](https://github.com/Davinci-Meg/cmux-windows/releases).
 
-## 🛠️ 開発環境セットアップ
+## 🛠️ Development Setup
 
-### 前提条件
+### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18以上)
+- [Node.js](https://nodejs.org/) (v18 or later)
 - [Rust](https://www.rust-lang.org/tools/install)
-- [Tauri v2 の前提条件](https://v2.tauri.app/start/prerequisites/)
+- [Tauri v2 Prerequisites](https://v2.tauri.app/start/prerequisites/)
 
-### セットアップ
+### Setup
 
 ```bash
-# リポジトリをクローン
+# Clone the repository
 git clone https://github.com/Davinci-Meg/cmux-windows.git
 cd cmux-windows
 
-# 依存パッケージのインストール
+# Install dependencies
 npm install
 
-# 開発サーバーの起動
+# Start the development server
 npm run tauri dev
 
-# ビルド
+# Build
 npm run tauri build
 ```
 
-## ⌨️ キーボードショートカット
+## ⌨️ Keyboard Shortcuts
 
-| ショートカット | 動作 |
+| Shortcut | Action |
 |---|---|
-| `Ctrl+Alt+T` | TextBox入力モードのトグル |
-| `Ctrl+Shift+T` | 新規タブ |
-| `Ctrl+Shift+W` | タブ / ペインを閉じる |
-| `Ctrl+Tab` | 次のタブへ |
-| `Ctrl+Shift+Tab` | 前のタブへ |
-| `Ctrl+PageDown` | 次のタブへ |
-| `Ctrl+PageUp` | 前のタブへ |
-| `Ctrl+,` | 設定を開く |
-| `Ctrl+\` | 横分割 |
-| `Ctrl+-` | 縦分割 |
-| `Ctrl+]` | 次のペインへ移動 |
-| `Ctrl+[` | 前のペインへ移動 |
+| `Ctrl+Alt+T` | Toggle TextBox input mode |
+| `Ctrl+Shift+T` | New tab |
+| `Ctrl+Shift+W` | Close tab / pane |
+| `Ctrl+Tab` | Next tab |
+| `Ctrl+Shift+Tab` | Previous tab |
+| `Ctrl+PageDown` | Next tab |
+| `Ctrl+PageUp` | Previous tab |
+| `Ctrl+,` | Open settings |
+| `Ctrl+\` | Horizontal split |
+| `Ctrl+-` | Vertical split |
+| `Ctrl+]` | Next pane |
+| `Ctrl+[` | Previous pane |
 
-## 🧩 技術スタック
+## 🧩 Tech Stack
 
-| カテゴリ | 技術 |
+| Category | Technology |
 |---|---|
-| フレームワーク | Tauri v2 |
-| フロントエンド | React 19 + TypeScript |
-| バックエンド | Rust |
-| ターミナル | xterm.js |
-| レンダラー | WebGL（Canvas フォールバック） |
-| テーマ | Catppuccin Mocha |
-| ビルドツール | Vite |
+| Framework | Tauri v2 |
+| Frontend | React 19 + TypeScript |
+| Backend | Rust |
+| Terminal | xterm.js |
+| Renderer | WebGL (Canvas fallback) |
+| Theme | Catppuccin Mocha |
+| Build Tool | Vite |
 
-## 📄 ライセンス
+## 📄 License
 
-[GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE)
+[MIT License](LICENSE)
