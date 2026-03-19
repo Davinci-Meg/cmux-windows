@@ -23,6 +23,7 @@ pub fn run() {
             commands::close_pty,
             commands::get_settings,
             commands::update_settings,
+            commands::run_notification_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

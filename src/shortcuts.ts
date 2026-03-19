@@ -16,6 +16,11 @@ export const SHORTCUTS: Shortcut[] = [
   { key: "PageDown", ctrl: true, label: "Ctrl+PageDown", action: "next-tab" },
   { key: "PageUp", ctrl: true, label: "Ctrl+PageUp", action: "prev-tab" },
   { key: ",", ctrl: true, label: "Ctrl+,", action: "open-settings" },
+  { key: "n", ctrl: true, shift: true, label: "Ctrl+Shift+N", action: "notification-panel" },
+  { key: "\\", ctrl: true, label: "Ctrl+\\", action: "split-horizontal" },
+  { key: "-", ctrl: true, label: "Ctrl+-", action: "split-vertical" },
+  { key: "]", ctrl: true, label: "Ctrl+]", action: "next-pane" },
+  { key: "[", ctrl: true, label: "Ctrl+[", action: "prev-pane" },
 ];
 
 export function matchShortcut(e: KeyboardEvent): string | null {

@@ -74,3 +74,20 @@ pub fn get_settings() -> Result<Settings, String> {
 pub fn update_settings(settings: Settings) -> Result<(), String> {
     settings.save()
 }
+
+/// Run a custom notification command with title/body as environment variables.
+#[tauri::command]
+pub async fn run_notification_command(title: String, body: String) -> Result<(), String> {
+    let settings = Settings::load()?;
+    let cmd = &settings.notifications.custom_command;
+    if cmd.is_empty() {
+        return Ok(());
+    }
+    tokio::process::Command::new("cmd")
+        .args(["/C", cmd])
+        .env("CMUX_NOTIFICATION_TITLE", &title)
+        .env("CMUX_NOTIFICATION_BODY", &body)
+        .spawn()
+        .map_err(|e| format!("Failed to run notification command: {e}"))?;
+    Ok(())
+}

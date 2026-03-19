@@ -57,6 +57,7 @@ pub struct WindowSettings {
 #[serde(default)]
 pub struct NotificationSettings {
     pub agent_done: bool,
+    pub custom_command: String,
 }
 
 // --- Defaults ---
@@ -76,7 +77,10 @@ impl Default for Settings {
 
 impl Default for NotificationSettings {
     fn default() -> Self {
-        Self { agent_done: true }
+        Self {
+            agent_done: true,
+            custom_command: String::new(),
+        }
     }
 }
 

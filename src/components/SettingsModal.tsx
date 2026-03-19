@@ -8,7 +8,7 @@ interface Settings {
   text_box: { enabled: boolean; enter_to_send: boolean; escape_behavior: string };
   sidebar: { visible: boolean; width: number };
   window: { width: number; height: number; start_maximized: boolean };
-  notifications: { agent_done: boolean };
+  notifications: { agent_done: boolean; custom_command: string };
 }
 
 interface SettingsModalProps {
@@ -174,6 +174,23 @@ export default function SettingsModal({ onClose, onAppearanceChange, onNotificat
               />
               <span>Agent完了時に通知する</span>
             </label>
+            <label className="settings-field">
+              <span>カスタムコマンド</span>
+              <input
+                type="text"
+                value={settings.notifications.custom_command}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    notifications: { ...settings.notifications, custom_command: e.target.value },
+                  })
+                }
+                placeholder="例: powershell -Command ..."
+              />
+            </label>
+            <div style={{ fontSize: "11px", color: "#585b70", marginTop: "2px" }}>
+              環境変数 CMUX_NOTIFICATION_TITLE, CMUX_NOTIFICATION_BODY が渡されます
+            </div>
           </section>
 
           {/* Keyboard shortcuts (read-only) */}
@@ -214,6 +231,11 @@ function actionLabel(action: string): string {
     case "next-tab": return "次のタブ";
     case "prev-tab": return "前のタブ";
     case "open-settings": return "設定を開く";
+    case "notification-panel": return "通知パネル";
+    case "split-horizontal": return "右に分割";
+    case "split-vertical": return "下に分割";
+    case "next-pane": return "次のペイン";
+    case "prev-pane": return "前のペイン";
     default: return action;
   }
 }

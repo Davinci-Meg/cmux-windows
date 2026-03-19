@@ -517,7 +517,7 @@ dependencies = [
 
 [[package]]
 name = "cmux-windows"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "dirs",
  "env_logger",
@@ -531,6 +531,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-shell",
  "tauri-plugin-updater",
+ "tokio",
  "uuid",
 ]
 
@@ -4608,6 +4609,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "windows-sys 0.61.2",
 ]

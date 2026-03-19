@@ -5,17 +5,21 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { extractOscNotifications } from "../utils/oscParser";
 
 interface TerminalProps {
   tabId: string | null;
   onTabIdCreated: (id: string) => void;
   onTitleChange?: (title: string) => void;
+  onOscNotification?: (title: string, body: string) => void;
   isActive: boolean;
+  // 分割ビューで非アクティブペインでも表示を維持するフラグ
+  isVisible?: boolean;
   fontFamily?: string;
   fontSize?: number;
 }
 
-export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActive, fontFamily, fontSize }: TerminalProps) {
+export default function Terminal({ tabId, onTabIdCreated, onTitleChange, onOscNotification, isActive, isVisible, fontFamily, fontSize }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -98,7 +102,11 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActiv
         unlistenOutputRef.current = await listen<string>(
           `pty-output-${id}`,
           (event) => {
-            term.write(event.payload);
+            const { cleaned, notifications } = extractOscNotifications(event.payload);
+            if (cleaned) term.write(cleaned);
+            for (const n of notifications) {
+              if (onOscNotification) onOscNotification(n.title, n.body);
+            }
           }
         );
         unlistenExitRef.current = await listen(
@@ -170,6 +178,13 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActiv
     }
   }, [isActive]);
 
+  // 分割ビューで表示されたタイミングでfitする
+  useEffect(() => {
+    if (isVisible && !isActive && fitAddonRef.current) {
+      setTimeout(() => fitAddonRef.current?.fit(), 0);
+    }
+  }, [isVisible, isActive]);
+
   const handleRetry = useCallback(async () => {
     const term = xtermRef.current;
     if (!term) return;
@@ -189,7 +204,11 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActiv
       unlistenOutputRef.current = await listen<string>(
         `pty-output-${id}`,
         (event) => {
-          term.write(event.payload);
+          const { cleaned, notifications } = extractOscNotifications(event.payload);
+          if (cleaned) term.write(cleaned);
+          for (const n of notifications) {
+            if (onOscNotification) onOscNotification(n.title, n.body);
+          }
         }
       );
       unlistenExitRef.current = await listen(
@@ -214,7 +233,7 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, isActiv
       style={{
         flex: 1,
         overflow: "hidden",
-        display: isActive ? "flex" : "none",
+        display: (isActive || isVisible) ? "flex" : "none",
         flexDirection: "column",
         position: "relative",
       }}
