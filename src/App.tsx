@@ -505,6 +505,9 @@ export default function App() {
   const displayedTabIds = getAllTabIds(layout);
 
   // --- DOM直接操作によるTerminal移動（再マウントなし） ---
+  // 依存配列を最小限に: tabs配列はタイトル/ステータス変更で頻繁に更新されるため除外
+  const activeTabUid = tabs[activeIndex]?.uid;
+  const activeTabHasId = !!tabs[activeIndex]?.id;
   useLayoutEffect(() => {
     if (!terminalsContainerRef.current) return;
     const container = terminalsContainerRef.current;
@@ -545,15 +548,14 @@ export default function App() {
       }
 
       // id未取得のアクティブタブも表示
-      const activeTabObj = tabs[activeIndex];
-      if (activeTabObj && !activeTabObj.id) {
+      if (!activeTabHasId && activeTabUid) {
         const wrapper = container.querySelector<HTMLDivElement>(
-          `.terminal-wrapper[data-tab-uid="${activeTabObj.uid}"]`
+          `.terminal-wrapper[data-tab-uid="${activeTabUid}"]`
         );
         if (wrapper) wrapper.style.display = "flex";
       }
     }
-  }, [layout, isSplit, activeTab?.id, activeIndex, tabs]);
+  }, [layout, isSplit, activeTab?.id, activeIndex, activeTabUid, activeTabHasId]);
 
   // Keyboard shortcuts
   useEffect(() => {
