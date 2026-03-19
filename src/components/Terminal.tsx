@@ -2,9 +2,11 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { open } from "@tauri-apps/plugin-shell";
 import { extractOscNotifications } from "../utils/oscParser";
 
 interface TerminalProps {
@@ -46,7 +48,8 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, onOscNo
         background: "#1e1e2e",
         foreground: "#cdd6f4",
         cursor: "#f5e0dc",
-        selectionBackground: "#585b7066",
+        selectionBackground: "#89b4fa80",
+        selectionForeground: "#ffffff",
         black: "#45475a",
         red: "#f38ba8",
         green: "#a6e3a1",
@@ -70,6 +73,10 @@ export default function Terminal({ tabId, onTabIdCreated, onTitleChange, onOscNo
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
+    const webLinksAddon = new WebLinksAddon((_event, uri) => {
+      open(uri).catch(() => {});
+    });
+    term.loadAddon(webLinksAddon);
     term.open(containerRef.current);
     fitAddon.fit();
 
