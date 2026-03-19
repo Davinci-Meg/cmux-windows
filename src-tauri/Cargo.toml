@@ -1,6 +1,6 @@
 [package]
 name = "cmux-windows"
-version = "0.2.0"
+version = "0.3.0"
 description = "Terminal emulator with TextBox input mode for Windows"
 authors = ["megum"]
 edition = "2021"
